@@ -1,30 +1,29 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useFinverseStore } from '../store/useFinverseStore';
-import { personas } from '../data/personas';
 import { theme } from '../constants/theme';
 
 export const PersonaSwitcher = () => {
-  const { activePersona, setActivePersona } = useFinverseStore();
+  const { activePersona, personas, setActivePersona, dataSource } = useFinverseStore();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>DEV: Persona Switcher</Text>
+      <Text style={styles.label}>{dataSource === 'remote' ? 'LIVE: Profiles' : 'DEV: Persona Switcher'}</Text>
       <View style={styles.buttonRow}>
-        {personas.map(p => (
+        {personas.map((persona) => (
           <TouchableOpacity
-            key={p.id}
+            key={persona.id}
             style={[
               styles.button,
-              activePersona.id === p.id && styles.activeButton
+              activePersona.id === persona.id && styles.activeButton
             ]}
-            onPress={() => setActivePersona(p.id)}
+            onPress={() => setActivePersona(persona.id)}
           >
             <Text style={[
               styles.buttonText,
-              activePersona.id === p.id && styles.activeText
+              activePersona.id === persona.id && styles.activeText
             ]}>
-              {p.id.split('_')[0].toUpperCase()}
+              {String(persona.personaType || persona.id).replace('_', ' ').slice(0, 8).toUpperCase()}
             </Text>
           </TouchableOpacity>
         ))}

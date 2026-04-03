@@ -1,24 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
 import { useFinverseStore } from '../store/useFinverseStore';
 import { theme } from '../constants/theme';
 import { InsuranceCard } from '../components/InsuranceCard';
 import { LoanCard } from '../components/LoanCard';
 
-// Mock finance data
-const mockFinanceData = {
-  insurance: [
-    { id: '1', name: 'Term Life Insurance', type: 'Life', coverage: 10000000, nextPremiumDate: '15 Nov 2023', premiumAmount: 12000, frequency: 'Yearly' },
-    { id: '2', name: 'Family Floater Health', type: 'Health', coverage: 1000000, nextPremiumDate: '01 Dec 2023', premiumAmount: 1500, frequency: 'Monthly' },
-  ],
-  loans: [
-    { id: '1', name: 'Home Loan', bank: 'HDFC Bank', totalAmount: 5000000, paidAmount: 1500000, emiAmount: 45000, nextEmiDate: '05 Nov 2023', interestRate: 8.5 },
-    { id: '2', name: 'Car Loan', bank: 'ICICI Bank', totalAmount: 800000, paidAmount: 400000, emiAmount: 15000, nextEmiDate: '10 Nov 2023', interestRate: 9.2 },
-  ]
-};
-
 export default function FinanceScreen() {
-  const { activePersona } = useFinverseStore();
+  const { activePersona, openFormModal } = useFinverseStore();
+  const insurancePolicies = activePersona.insurance || [];
+  const loans = activePersona.loans || [];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -30,19 +20,34 @@ export default function FinanceScreen() {
           <Text style={styles.headerSubtitle}>Manage your liabilities & protection</Text>
         </View>
 
-        {/* Insurance Section */}
         <Text style={styles.sectionTitle}>Insurance Policies</Text>
-        {mockFinanceData.insurance.map((policy) => (
-          <InsuranceCard key={policy.id} policy={policy} />
+        <TouchableOpacity style={styles.addButton} onPress={() => openFormModal({ type: 'insurance' })}>
+          <Text style={styles.addButtonText}>Add Insurance</Text>
+        </TouchableOpacity>
+        {insurancePolicies.map((policy) => (
+          <View key={policy.id} style={styles.recordRow}>
+            <InsuranceCard policy={policy} />
+            <TouchableOpacity style={styles.inlineButton} onPress={() => openFormModal({ type: 'insurance', mode: 'edit', record: policy })}>
+              <Text style={styles.inlineButtonText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
         ))}
+        {insurancePolicies.length === 0 ? <Text style={styles.emptyText}>No insurance policies yet.</Text> : null}
         
-        {/* Loans Section */}
         <Text style={[styles.sectionTitle, { marginTop: theme.spacing.m }]}>Active Loans</Text>
-        {mockFinanceData.loans.map((loan) => (
-          <LoanCard key={loan.id} loan={loan} />
+        <TouchableOpacity style={styles.addButton} onPress={() => openFormModal({ type: 'loan' })}>
+          <Text style={styles.addButtonText}>Add Loan</Text>
+        </TouchableOpacity>
+        {loans.map((loan) => (
+          <View key={loan.id} style={styles.recordRow}>
+            <LoanCard loan={loan} />
+            <TouchableOpacity style={styles.inlineButton} onPress={() => openFormModal({ type: 'loan', mode: 'edit', record: loan })}>
+              <Text style={styles.inlineButtonText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
         ))}
+        {loans.length === 0 ? <Text style={styles.emptyText}>No active loans for this profile.</Text> : null}
 
-        {/* Future API Integrations Markers */}
         <View style={styles.integrationMarker}>
            <Text style={styles.integrationText}>
              // TODO: Integrate Account Aggregator (Setu) for Auto-fetching Loans
@@ -99,5 +104,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'monospace',
     marginBottom: theme.spacing.xs,
-  }
+  },
+  emptyText: {
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.m,
+  },
+  addButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.accentBlue,
+    borderRadius: theme.borderRadius.m,
+    paddingHorizontal: theme.spacing.m,
+    paddingVertical: theme.spacing.s,
+    marginBottom: theme.spacing.m,
+  },
+  addButtonText: {
+    color: '#000',
+    fontWeight: '700',
+  },
+  recordRow: {
+    marginBottom: theme.spacing.s,
+  },
+  inlineButton: {
+    alignSelf: 'flex-end',
+    marginTop: -theme.spacing.s,
+    marginBottom: theme.spacing.s,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: theme.borderRadius.s,
+    paddingHorizontal: theme.spacing.m,
+    paddingVertical: theme.spacing.xs,
+  },
+  inlineButtonText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });

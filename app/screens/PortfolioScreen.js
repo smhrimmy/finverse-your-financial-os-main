@@ -4,34 +4,23 @@ import { useFinverseStore } from '../store/useFinverseStore';
 import { theme } from '../constants/theme';
 import { PortfolioCard } from '../components/PortfolioCard';
 
-// Mock portfolio data
-const mockPortfolio = {
-  stocks: [
-    { id: '1', name: 'Reliance Ind', symbol: 'RELIANCE', value: 250000, invested: 200000, profitLoss: 50000, profitLossPercentage: 25, quantity: 100 },
-    { id: '2', name: 'TCS', symbol: 'TCS', value: 180000, invested: 190000, profitLoss: -10000, profitLossPercentage: -5.2, quantity: 50 },
-  ],
-  crypto: [
-    { id: '3', name: 'Bitcoin', symbol: 'BTC', value: 300000, invested: 150000, profitLoss: 150000, profitLossPercentage: 100, quantity: 0.1 },
-    { id: '4', name: 'Ethereum', symbol: 'ETH', value: 80000, invested: 100000, profitLoss: -20000, profitLossPercentage: -20, quantity: 0.5 },
-  ],
-  mutualFunds: [
-    { id: '5', name: 'Parag Parikh Flexi Cap', symbol: 'PPFAS', value: 450000, invested: 350000, profitLoss: 100000, profitLossPercentage: 28.5, quantity: 5000 },
-    { id: '6', name: 'Nifty 50 Index', symbol: 'NIFTY50', value: 200000, invested: 180000, profitLoss: 20000, profitLossPercentage: 11.1, quantity: 1500 },
-  ]
-};
-
 export default function PortfolioScreen() {
-  const { activePersona } = useFinverseStore();
+  const { activePersona, openFormModal } = useFinverseStore();
   const [activeTab, setActiveTab] = useState('Stocks');
 
   const tabs = ['Stocks', 'Crypto', 'Mutual Funds'];
+  const portfolio = activePersona.portfolio || [];
 
   const getActiveData = () => {
-    switch(activeTab) {
-      case 'Stocks': return mockPortfolio.stocks;
-      case 'Crypto': return mockPortfolio.crypto;
-      case 'Mutual Funds': return mockPortfolio.mutualFunds;
-      default: return [];
+    switch (activeTab) {
+      case 'Stocks':
+        return portfolio.filter((item) => item.type === 'stock');
+      case 'Crypto':
+        return portfolio.filter((item) => item.type === 'crypto');
+      case 'Mutual Funds':
+        return portfolio.filter((item) => item.type === 'mutual_fund');
+      default:
+        return [];
     }
   };
 
@@ -43,28 +32,31 @@ export default function PortfolioScreen() {
     }).format(amount);
   };
 
-  // Calculate totals for active tab
   const activeData = getActiveData();
   const totalValue = activeData.reduce((sum, item) => sum + item.value, 0);
   const totalInvested = activeData.reduce((sum, item) => sum + item.invested, 0);
   const totalProfitLoss = totalValue - totalInvested;
   const isOverallProfit = totalProfitLoss >= 0;
+  const pnlPercent = totalInvested > 0 ? ((totalProfitLoss / totalInvested) * 100).toFixed(2) : '0.00';
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
       
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Portfolio</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>Portfolio</Text>
+          <TouchableOpacity style={styles.addButton} onPress={() => openFormModal({ type: 'investment' })}>
+            <Text style={styles.addButtonText}>Add</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.headerSubtitle}>Total Value ({activeTab})</Text>
         <Text style={styles.totalValue}>{formatCurrency(totalValue)}</Text>
         <Text style={[styles.totalReturns, { color: isOverallProfit ? theme.colors.profit : theme.colors.loss }]}>
-          {isOverallProfit ? '+' : ''}{formatCurrency(totalProfitLoss)} ({((totalProfitLoss/totalInvested)*100).toFixed(2)}%)
+          {isOverallProfit ? '+' : ''}{formatCurrency(totalProfitLoss)} ({pnlPercent}%)
         </Text>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabContainer}>
         {tabs.map((tab) => (
           <TouchableOpacity 
@@ -77,12 +69,16 @@ export default function PortfolioScreen() {
         ))}
       </View>
 
-      {/* Assets List */}
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         {activeData.map((asset) => (
-          <PortfolioCard key={asset.id} asset={asset} />
+          <View key={asset.id} style={styles.recordRow}>
+            <PortfolioCard asset={asset} />
+            <TouchableOpacity style={styles.inlineButton} onPress={() => openFormModal({ type: 'investment', mode: 'edit', record: asset })}>
+              <Text style={styles.inlineButtonText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
         ))}
-        {/* Future API Integrations Markers */}
+        {activeData.length === 0 ? <Text style={styles.emptyText}>No assets in this profile yet.</Text> : null}
         <View style={styles.integrationMarker}>
            <Text style={styles.integrationText}>
              // TODO: Integrate Zerodha Kite API for Stocks
@@ -107,13 +103,17 @@ const styles = StyleSheet.create({
   header: {
     padding: theme.spacing.m,
     paddingTop: theme.spacing.xl,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: theme.spacing.m,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: theme.colors.text,
-    marginBottom: theme.spacing.m,
   },
   headerSubtitle: {
     fontSize: 14,
@@ -168,5 +168,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'monospace',
     marginBottom: theme.spacing.xs,
-  }
+  },
+  emptyText: {
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.m,
+  },
+  addButton: {
+    backgroundColor: theme.colors.accentBlue,
+    borderRadius: theme.borderRadius.m,
+    paddingHorizontal: theme.spacing.m,
+    paddingVertical: theme.spacing.s,
+  },
+  addButtonText: {
+    color: '#000',
+    fontWeight: '700',
+  },
+  recordRow: {
+    marginBottom: theme.spacing.s,
+  },
+  inlineButton: {
+    alignSelf: 'flex-end',
+    marginTop: -theme.spacing.s,
+    marginBottom: theme.spacing.s,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: theme.borderRadius.s,
+    paddingHorizontal: theme.spacing.m,
+    paddingVertical: theme.spacing.xs,
+  },
+  inlineButtonText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });

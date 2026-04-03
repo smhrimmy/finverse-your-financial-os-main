@@ -18,10 +18,11 @@ export const PortfolioCard = ({ asset }) => {
     }).format(amount);
   };
 
-  // Mock mini sparkline data based on profit/loss
-  const sparklineData = isProfit 
-    ? [{x: 1, y: 10}, {x: 2, y: 12}, {x: 3, y: 11}, {x: 4, y: 15}]
-    : [{x: 1, y: 15}, {x: 2, y: 14}, {x: 3, y: 12}, {x: 4, y: 10}];
+  const sparklineData = asset.sparkline?.length
+    ? asset.sparkline
+    : isProfit
+      ? [{ x: 1, y: 10 }, { x: 2, y: 12 }, { x: 3, y: 11 }, { x: 4, y: 15 }]
+      : [{ x: 1, y: 15 }, { x: 2, y: 14 }, { x: 3, y: 12 }, { x: 4, y: 10 }];
 
   return (
     <TouchableOpacity onPress={() => setExpanded(!expanded)} activeOpacity={0.8}>
@@ -31,8 +32,6 @@ export const PortfolioCard = ({ asset }) => {
             <Text style={styles.name}>{asset.name}</Text>
             <Text style={styles.symbol}>{asset.symbol}</Text>
           </View>
-          
-          {/* Mini Sparkline */}
           <View style={styles.sparklineContainer}>
              <VictoryChart height={40} width={60} padding={0}>
                 <VictoryLine

@@ -1,14 +1,19 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinverseStore } from '../store/useFinverseStore';
 import { theme } from '../constants/theme';
 import { NetWorthCard } from '../components/NetWorthCard';
 import { InsightCard } from '../components/InsightCard';
 import { PersonaSwitcher } from '../components/PersonaSwitcher';
+import { signOutUser } from '../services/finverseService';
 
 export default function HomeScreen({ navigation }) {
-  const { activePersona } = useFinverseStore();
+  const { activePersona, loading, refreshing, error, initializeApp, refreshApp, dataSource, openFormModal } = useFinverseStore();
+
+  useEffect(() => {
+    initializeApp();
+  }, [initializeApp]);
 
   const QuickAction = ({ icon, label, onPress }) => (
     <TouchableOpacity style={styles.actionButton} onPress={onPress}>
@@ -19,15 +24,23 @@ export default function HomeScreen({ navigation }) {
     </TouchableOpacity>
   );
 
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+    } catch (error) {
+      Alert.alert('Sign out failed', error?.message || 'Try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
-      <ScrollView contentContainerStyle={styles.container}>
-        
-        {/* DEV MODE Switcher */}
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshApp} tintColor={theme.colors.accentBlue} />}
+      >
         <PersonaSwitcher />
 
-        {/* Header Section */}
         <View style={styles.header}>
           <View style={styles.userInfo}>
             <View style={styles.avatar}>
@@ -35,16 +48,30 @@ export default function HomeScreen({ navigation }) {
             </View>
             <Text style={styles.greeting}>{activePersona.greeting}</Text>
           </View>
-          <TouchableOpacity style={styles.bellIcon}>
-            <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
-            <View style={styles.notificationBadge} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.bellIcon}>
+              <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
+              <View style={styles.notificationBadge} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.logoutIcon} onPress={handleSignOut}>
+              <Ionicons name="log-out-outline" size={22} color={theme.colors.text} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Net Worth Dashboard */}
-        <NetWorthCard netWorth={activePersona.netWorth} breakdown={activePersona.breakdown} />
+        <View style={styles.sourceRow}>
+          <Text style={styles.sourceText}>{dataSource === 'remote' ? 'Live Supabase Data' : 'Offline Demo Data'}</Text>
+          {loading ? <ActivityIndicator size="small" color={theme.colors.accentBlue} /> : null}
+        </View>
 
-        {/* AI Insight Cards */}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <NetWorthCard
+          netWorth={activePersona.netWorth}
+          breakdown={activePersona.breakdown}
+          history={activePersona.netWorthHistory}
+        />
+
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>AI Insights</Text>
           <Ionicons name="sparkles" size={16} color={theme.colors.accentPurple} />
@@ -53,18 +80,16 @@ export default function HomeScreen({ navigation }) {
           <InsightCard key={insight.id} insight={insight} />
         ))}
 
-        {/* Quick Actions */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
         </View>
         <View style={styles.actionsGrid}>
-          <QuickAction icon="wallet-outline" label="Expense" onPress={() => console.log('Add Expense')} />
-          <QuickAction icon="trending-up-outline" label="Invest" onPress={() => console.log('Add Invest')} />
-          <QuickAction icon="card-outline" label="Pay EMI" onPress={() => console.log('Pay EMI')} />
-          <QuickAction icon="shield-checkmark-outline" label="Insurance" onPress={() => console.log('Add Insurance')} />
+          <QuickAction icon="wallet-outline" label="Expense" onPress={() => openFormModal({ type: 'expense' })} />
+          <QuickAction icon="trending-up-outline" label="Invest" onPress={() => openFormModal({ type: 'investment' })} />
+          <QuickAction icon="card-outline" label="Pay EMI" onPress={() => openFormModal({ type: 'loan' })} />
+          <QuickAction icon="shield-checkmark-outline" label="Insurance" onPress={() => openFormModal({ type: 'insurance' })} />
         </View>
 
-        {/* Padding for bottom nav */}
         <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
@@ -83,6 +108,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: theme.spacing.s,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sourceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.s,
+  },
+  sourceText: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+  },
+  errorText: {
+    color: theme.colors.loss,
+    fontSize: 12,
     marginBottom: theme.spacing.s,
   },
   userInfo: {
@@ -113,6 +157,10 @@ const styles = StyleSheet.create({
   bellIcon: {
     padding: theme.spacing.xs,
     position: 'relative',
+    marginRight: theme.spacing.s,
+  },
+  logoutIcon: {
+    padding: theme.spacing.xs,
   },
   notificationBadge: {
     position: 'absolute',

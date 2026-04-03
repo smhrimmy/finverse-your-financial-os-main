@@ -1,20 +1,27 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, SafeAreaView, ActivityIndicator } from 'react-native';
 import { theme } from '../constants/theme';
 import { GlassCard } from '../components/GlassCard';
 import { useFinverseStore } from '../store/useFinverseStore';
 
-// PLACEHOLDER: Replace with your actual OpenAI API Key in a real app (use .env)
-const OPENAI_API_KEY = "YOUR_API_KEY";
+const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 
 export default function AIScreen() {
   const { activePersona } = useFinverseStore();
-  const [messages, setMessages] = useState([
-    { id: '1', role: 'assistant', content: `Hi ${activePersona.name.split(' ')[0]}, I'm your AI Financial Advisor. How can I help you today?` }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollViewRef = useRef();
+
+  useEffect(() => {
+    setMessages([
+      {
+        id: `intro-${activePersona.id}`,
+        role: 'assistant',
+        content: `Hi ${activePersona.name.split(' ')[0]}, I'm your AI Financial Advisor. How can I help you today?`,
+      },
+    ]);
+  }, [activePersona.id, activePersona.name]);
 
   const handleSend = async () => {
     if (!inputText.trim()) return;
@@ -25,8 +32,10 @@ export default function AIScreen() {
     setIsLoading(true);
 
     try {
-      // REAL OPENAI API INTEGRATION
-      // Make sure to add your API key above to test this
+      if (!OPENAI_API_KEY) {
+        throw new Error('Missing OpenAI key');
+      }
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -34,7 +43,7 @@ export default function AIScreen() {
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo", // Or gpt-4 if you have access
+          model: "gpt-3.5-turbo",
           messages: [
             { 
               role: "system", 
@@ -43,7 +52,6 @@ export default function AIScreen() {
               Their net worth is ₹${activePersona.netWorth}. 
               Keep your answers concise, practical, and focused on wealth building, tax saving, or budgeting in the Indian context (using ₹).`
             },
-            // Include previous messages for context
             ...messages.map(m => ({ role: m.role, content: m.content })),
             { role: "user", content: newUserMessage.content }
           ],
@@ -62,7 +70,6 @@ export default function AIScreen() {
         };
         setMessages(prev => [...prev, assistantResponse]);
       } else {
-        // Fallback if API fails or key is missing
         throw new Error('API Error');
       }
 
@@ -71,7 +78,7 @@ export default function AIScreen() {
       const errorMsg = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm sorry, I couldn't process that. (Did you set the OPENAI_API_KEY?)"
+        content: "I'm sorry, I couldn't process that. Add EXPO_PUBLIC_OPENAI_API_KEY to enable AI replies."
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
@@ -99,13 +106,11 @@ export default function AIScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>FinVerse AI</Text>
           <Text style={styles.headerSubtitle}>Powered by OpenAI</Text>
         </View>
 
-        {/* Auto Insights Panel */}
         <View style={styles.insightsContainer}>
            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
              <TouchableOpacity style={styles.insightChip} onPress={() => setInputText("How can I reduce my food spending?")}>
@@ -120,7 +125,6 @@ export default function AIScreen() {
            </ScrollView>
         </View>
 
-        {/* Chat Area */}
         <ScrollView 
           style={styles.chatArea} 
           contentContainerStyle={styles.chatContent}
@@ -137,7 +141,6 @@ export default function AIScreen() {
           )}
         </ScrollView>
 
-        {/* Input Area */}
         <GlassCard style={styles.inputCard} intensity={20}>
           <View style={styles.inputContainer}>
             <TextInput

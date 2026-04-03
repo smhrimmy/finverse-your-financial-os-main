@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
 import { useFinverseStore } from '../store/useFinverseStore';
 import { theme } from '../constants/theme';
 import { GlassCard } from '../components/GlassCard';
@@ -7,14 +7,13 @@ import { TransactionItem } from '../components/TransactionItem';
 import { VictoryBar, VictoryChart, VictoryAxis, VictoryPie } from 'victory-native';
 
 export default function ExpensesScreen() {
-  const { activePersona } = useFinverseStore();
+  const { activePersona, openFormModal } = useFinverseStore();
 
-  // Calculate totals for the mock charts
-  const incomeTransactions = activePersona.transactions.filter(t => t.type === 'income');
-  const expenseTransactions = activePersona.transactions.filter(t => t.type === 'expense');
+  const incomeTransactions = activePersona.transactions.filter((transaction) => transaction.type === 'income');
+  const expenseTransactions = activePersona.transactions.filter((transaction) => transaction.type === 'expense');
 
-  const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const totalExpense = Math.abs(expenseTransactions.reduce((sum, t) => sum + t.amount, 0));
+  const totalIncome = incomeTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+  const totalExpense = expenseTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -24,26 +23,34 @@ export default function ExpensesScreen() {
     }).format(amount);
   };
 
-  // Mock data for Bar Chart (Monthly Income vs Expense)
-  const barData = [
-    { x: 'Inc', y: totalIncome, fill: theme.colors.profit },
-    { x: 'Exp', y: totalExpense, fill: theme.colors.loss },
-  ];
-
-  // Mock data for Pie Chart (Categories)
-  const pieData = [
-    { x: 'Housing', y: 40 },
-    { x: 'Food', y: 20 },
-    { x: 'Transport', y: 15 },
-    { x: 'Other', y: 25 },
-  ];
+  const currentMonthData = activePersona.monthlyData?.[activePersona.monthlyData.length - 1];
+  const barData = currentMonthData
+    ? [
+        { x: 'Inc', y: currentMonthData.income, fill: theme.colors.profit },
+        { x: 'Exp', y: currentMonthData.expenses, fill: theme.colors.loss },
+      ]
+    : [
+        { x: 'Inc', y: totalIncome, fill: theme.colors.profit },
+        { x: 'Exp', y: totalExpense, fill: theme.colors.loss },
+      ];
+  const pieData = activePersona.expenseBreakdown?.length
+    ? activePersona.expenseBreakdown.map((item) => ({ x: item.name, y: item.value }))
+    : [{ x: 'No Data', y: 1 }];
+  const pieColors = activePersona.expenseBreakdown?.length
+    ? activePersona.expenseBreakdown.map((item) => item.color)
+    : [theme.colors.textSecondary];
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         
-        <Text style={styles.headerTitle}>Cash Flow</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>Cash Flow</Text>
+          <TouchableOpacity style={styles.addButton} onPress={() => openFormModal({ type: 'expense' })}>
+            <Text style={styles.addButtonText}>Add</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.summaryContainer}>
           <GlassCard style={[styles.summaryCard, { borderColor: 'rgba(0, 255, 102, 0.3)' }]}>
@@ -88,7 +95,7 @@ export default function ExpensesScreen() {
                   width={150}
                   padding={10}
                   innerRadius={40}
-                  colorScale={[theme.colors.accentBlue, theme.colors.accentPurple, '#FFD700', '#FF8C00']}
+                  colorScale={pieColors}
                   style={{ labels: { fill: 'none' } }}
                   animate={{ duration: 1000 }}
                 />
@@ -96,10 +103,14 @@ export default function ExpensesScreen() {
            </View>
         </GlassCard>
 
-        {/* Transactions Section */}
         <Text style={styles.sectionTitle}>Recent Transactions</Text>
         {activePersona.transactions.map((transaction) => (
-          <TransactionItem key={transaction.id} transaction={transaction} />
+          <View key={transaction.id} style={styles.recordRow}>
+            <TransactionItem transaction={transaction} />
+            <TouchableOpacity style={styles.inlineButton} onPress={() => openFormModal({ type: 'expense', mode: 'edit', record: transaction })}>
+              <Text style={styles.inlineButtonText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
         ))}
 
       </ScrollView>
@@ -123,6 +134,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: theme.colors.text,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: theme.spacing.m,
   },
   summaryContainer: {
@@ -160,5 +176,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: theme.spacing.xs,
     textAlign: 'center'
-  }
+  },
+  addButton: {
+    backgroundColor: theme.colors.accentBlue,
+    borderRadius: theme.borderRadius.m,
+    paddingHorizontal: theme.spacing.m,
+    paddingVertical: theme.spacing.s,
+  },
+  addButtonText: {
+    color: '#000',
+    fontWeight: '700',
+  },
+  recordRow: {
+    marginBottom: theme.spacing.s,
+  },
+  inlineButton: {
+    alignSelf: 'flex-end',
+    marginTop: -theme.spacing.s,
+    marginBottom: theme.spacing.s,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: theme.borderRadius.s,
+    paddingHorizontal: theme.spacing.m,
+    paddingVertical: theme.spacing.xs,
+  },
+  inlineButtonText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });

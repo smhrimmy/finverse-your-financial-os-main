@@ -4,17 +4,7 @@ import { theme } from '../constants/theme';
 import { GlassCard } from './GlassCard';
 import { VictoryLine, VictoryChart, VictoryAxis } from 'victory-native';
 
-// Animated Line graph placeholder
-const mockChartData = [
-  { x: 1, y: 10 },
-  { x: 2, y: 15 },
-  { x: 3, y: 12 },
-  { x: 4, y: 20 },
-  { x: 5, y: 25 },
-];
-
-export const NetWorthCard = ({ netWorth, breakdown }) => {
-  // Format to Indian Rupees
+export const NetWorthCard = ({ netWorth, breakdown, history = [] }) => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -23,17 +13,29 @@ export const NetWorthCard = ({ netWorth, breakdown }) => {
     }).format(amount);
   };
 
+  const chartData = history.length
+    ? history.map((value, index) => ({
+        x: index + 1,
+        y: value,
+      }))
+    : [
+        { x: 1, y: netWorth * 0.82 },
+        { x: 2, y: netWorth * 0.88 },
+        { x: 3, y: netWorth * 0.91 },
+        { x: 4, y: netWorth * 0.96 },
+        { x: 5, y: netWorth },
+      ];
+
   return (
     <GlassCard style={styles.card}>
       <Text style={styles.label}>Total Net Worth</Text>
       <Text style={styles.value}>{formatCurrency(netWorth)}</Text>
       
-      {/* Animated Line Graph (Victory) */}
       <View style={styles.chartContainer}>
         <VictoryChart height={120} padding={{ top: 10, bottom: 10, left: 0, right: 0 }}>
           <VictoryLine
             animate={{ duration: 1000, onLoad: { duration: 1000 } }}
-            data={mockChartData}
+            data={chartData}
             style={{
               data: { stroke: theme.colors.accentBlue, strokeWidth: 3 },
             }}
@@ -43,7 +45,6 @@ export const NetWorthCard = ({ netWorth, breakdown }) => {
         </VictoryChart>
       </View>
 
-      {/* Breakdown Section */}
       <View style={styles.breakdownContainer}>
         <View style={styles.breakdownItem}>
           <Text style={styles.breakdownLabel}>Cash</Text>
