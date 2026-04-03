@@ -3,12 +3,19 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useFinverseStore } from '../store/useFinverseStore';
 import { theme } from '../constants/theme';
 
-export const PersonaSwitcher = () => {
+export const PersonaSwitcher = ({ onManagePress }) => {
   const { activePersona, personas, setActivePersona, dataSource } = useFinverseStore();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{dataSource === 'remote' ? 'LIVE: Profiles' : 'DEV: Persona Switcher'}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.label}>{dataSource === 'remote' ? 'LIVE: Profiles' : 'DEV: Persona Switcher'}</Text>
+        {onManagePress ? (
+          <TouchableOpacity style={styles.manageButton} onPress={onManagePress}>
+            <Text style={styles.manageText}>Manage</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
       <View style={styles.buttonRow}>
         {personas.map((persona) => (
           <TouchableOpacity
@@ -43,17 +50,24 @@ const styles = StyleSheet.create({
     color: theme.colors.accentPurple,
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: theme.spacing.xs,
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
   },
   button: {
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 4,
     backgroundColor: 'rgba(255,255,255,0.05)',
+    marginBottom: theme.spacing.xs,
   },
   activeButton: {
     backgroundColor: theme.colors.accentBlue,
@@ -65,5 +79,16 @@ const styles = StyleSheet.create({
   },
   activeText: {
     color: '#000',
+  },
+  manageButton: {
+    paddingHorizontal: theme.spacing.s,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.s,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  manageText: {
+    color: theme.colors.text,
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

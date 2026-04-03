@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme as appTheme } from './app/constants/theme';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useFinverseStore } from './app/store/useFinverseStore';
-import { listenToAuthChanges } from './app/services/finverseService';
+import { listenToAuthChanges, subscribeToFinverseRealtime } from './app/services/finverseService';
 
 import HomeScreen from './app/screens/HomeScreen';
 import ExpensesScreen from './app/screens/ExpensesScreen';
@@ -56,6 +56,8 @@ export default function App() {
   const initializeApp = useFinverseStore((state) => state.initializeApp);
   const initialized = useFinverseStore((state) => state.initialized);
   const isAuthenticated = useFinverseStore((state) => state.isAuthenticated);
+  const authUser = useFinverseStore((state) => state.authUser);
+  const refreshApp = useFinverseStore((state) => state.refreshApp);
   const openActionSheet = useFinverseStore((state) => state.openActionSheet);
   const resetAuthState = useFinverseStore((state) => state.resetAuthState);
 
@@ -75,6 +77,35 @@ export default function App() {
 
     return unsubscribe;
   }, [initializeApp, resetAuthState]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !authUser?.id) {
+      return undefined;
+    }
+
+    let refreshTimer = null;
+
+    const unsubscribe = subscribeToFinverseRealtime({
+      userId: authUser.id,
+      onChange: () => {
+        if (refreshTimer) {
+          clearTimeout(refreshTimer);
+        }
+
+        refreshTimer = setTimeout(() => {
+          refreshApp();
+        }, 350);
+      },
+    });
+
+    return () => {
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+      }
+
+      unsubscribe();
+    };
+  }, [authUser?.id, isAuthenticated, refreshApp]);
 
   if (!initialized) {
     return (

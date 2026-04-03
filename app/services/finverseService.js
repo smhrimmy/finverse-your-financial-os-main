@@ -405,6 +405,7 @@ const buildRemotePersona = ({
     name: profile.full_name,
     greeting: profile.greeting || `Hi, ${String(profile.full_name || 'there').split(' ')[0]}`,
     personaType: profile.persona_type,
+    isDefault: Boolean(profile.is_default),
     monthlyIncome: Number(profile.monthly_income || 0),
     monthlyExpenses: Number(profile.monthly_expenses || 0),
     netWorth,
@@ -531,6 +532,27 @@ export const signOutUser = async () => {
   if (response.error) {
     throw response.error;
   }
+};
+
+export const subscribeToFinverseRealtime = ({ userId, onChange }) => {
+  if (!supabase || !userId) {
+    return () => {};
+  }
+
+  const channel = supabase
+    .channel(`finverse-realtime-${userId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `owner_id=eq.${userId}` }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_assets' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'loans' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'insurance_policies' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'net_worth_snapshots' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ai_insights' }, onChange)
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 };
 
 const insertSeedProfile = async (userId, profileSeed, isDefault) => {
@@ -780,6 +802,31 @@ const getProfileById = async (profileId) => {
   return rows[0] || null;
 };
 
+const getProfilesForUser = async (userId) => {
+  return ensureSupabaseResponse(
+    await supabase
+      .from('profiles')
+      .select('*')
+      .eq('owner_id', userId)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: true })
+  );
+};
+
+const clearDefaultProfile = async (userId, excludeProfileId = null) => {
+  let query = supabase
+    .from('profiles')
+    .update({ is_default: false })
+    .eq('owner_id', userId)
+    .eq('is_default', true);
+
+  if (excludeProfileId) {
+    query = query.neq('id', excludeProfileId);
+  }
+
+  ensureSupabaseResponse(await query);
+};
+
 const getProfileNetWorthContext = async (profileId) => {
   const [latestSnapshot, assets, loans] = await Promise.all([
     getLatestSnapshot(profileId),
@@ -837,6 +884,116 @@ const insertSnapshot = async (profileId, values) => {
       })
       .select()
       .limit(1)
+  );
+};
+
+export const saveProfile = async ({ userId, profileId, values }) => {
+  if (!supabase || !userId) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const payload = {
+    owner_id: userId,
+    full_name: values.fullName.trim(),
+    greeting: values.greeting?.trim() || `Hi, ${values.fullName.trim().split(' ')[0]}`,
+    persona_type: values.personaType,
+    monthly_income: Number(values.monthlyIncome || 0),
+    monthly_expenses: Number(values.monthlyExpenses || 0),
+    is_default: Boolean(values.isDefault),
+  };
+
+  if (payload.is_default) {
+    await clearDefaultProfile(userId, profileId || null);
+  }
+
+  if (profileId) {
+    ensureSupabaseResponse(
+      await supabase
+        .from('profiles')
+        .update(payload)
+        .eq('id', profileId)
+    );
+
+    await insertSnapshot(profileId, {
+      cash_balance: Number(values.cashBalance || 0),
+      investment_balance: Number(values.investmentBalance || 0),
+      crypto_balance: Number(values.cryptoBalance || 0),
+      epf_balance: Number(values.epfBalance || 0),
+      liabilities_balance: Number(values.liabilitiesBalance || 0),
+    });
+
+    return profileId;
+  }
+
+  const insertedRows = ensureSupabaseResponse(
+    await supabase
+      .from('profiles')
+      .insert(payload)
+      .select()
+      .limit(1)
+  );
+
+  const insertedProfile = insertedRows[0];
+
+  await insertSnapshot(insertedProfile.id, {
+    cash_balance: Number(values.cashBalance || 0),
+    investment_balance: Number(values.investmentBalance || 0),
+    crypto_balance: Number(values.cryptoBalance || 0),
+    epf_balance: Number(values.epfBalance || 0),
+    liabilities_balance: Number(values.liabilitiesBalance || 0),
+  });
+
+  return insertedProfile.id;
+};
+
+export const deleteProfile = async ({ userId, profileId }) => {
+  if (!supabase || !userId || !profileId) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const existingProfiles = await getProfilesForUser(userId);
+
+  if (existingProfiles.length <= 1) {
+    throw new Error('At least one profile must remain.');
+  }
+
+  const removedProfile = existingProfiles.find((item) => item.id === profileId);
+
+  ensureSupabaseResponse(
+    await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', profileId)
+  );
+
+  if (removedProfile?.is_default) {
+    const remainingProfiles = await getProfilesForUser(userId);
+    const nextDefault = remainingProfiles[0];
+
+    if (nextDefault) {
+      ensureSupabaseResponse(
+        await supabase
+          .from('profiles')
+          .update({ is_default: true })
+          .eq('id', nextDefault.id)
+      );
+    }
+  }
+};
+
+export const setDefaultProfile = async ({ userId, profileId }) => {
+  if (!supabase || !userId || !profileId) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await clearDefaultProfile(userId, profileId);
+
+  ensureSupabaseResponse(
+    await supabase
+      .from('profiles')
+      .update({ is_default: true })
+      .eq('id', profileId)
+      .eq('owner_id', userId)
   );
 };
 

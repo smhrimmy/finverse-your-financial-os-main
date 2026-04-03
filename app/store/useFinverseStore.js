@@ -15,6 +15,7 @@ export const useFinverseStore = create((set, get) => ({
   authUser: null,
   isAuthenticated: false,
   actionSheetVisible: false,
+  profileManagerVisible: false,
   formModalVisible: false,
   formModalType: 'expense',
   formModalMode: 'create',
@@ -92,6 +93,8 @@ export const useFinverseStore = create((set, get) => ({
   },
   openActionSheet: () => set({ actionSheetVisible: true }),
   closeActionSheet: () => set({ actionSheetVisible: false }),
+  openProfileManager: () => set({ profileManagerVisible: true }),
+  closeProfileManager: () => set({ profileManagerVisible: false }),
   openFormModal: ({ type, mode = 'create', record = null }) =>
     set({
       actionSheetVisible: false,
@@ -118,6 +121,7 @@ export const useFinverseStore = create((set, get) => ({
       loading: false,
       refreshing: false,
       actionSheetVisible: false,
+      profileManagerVisible: false,
       formModalVisible: false,
       formModalRecord: null,
       error: null,

@@ -6,10 +6,11 @@ import { theme } from '../constants/theme';
 import { NetWorthCard } from '../components/NetWorthCard';
 import { InsightCard } from '../components/InsightCard';
 import { PersonaSwitcher } from '../components/PersonaSwitcher';
+import { ProfileManagementModal } from '../components/ProfileManagementModal';
 import { signOutUser } from '../services/finverseService';
 
 export default function HomeScreen({ navigation }) {
-  const { activePersona, loading, refreshing, error, initializeApp, refreshApp, dataSource, openFormModal } = useFinverseStore();
+  const { activePersona, loading, refreshing, error, initializeApp, refreshApp, dataSource, openFormModal, openProfileManager } = useFinverseStore();
 
   useEffect(() => {
     initializeApp();
@@ -39,7 +40,7 @@ export default function HomeScreen({ navigation }) {
         contentContainerStyle={styles.container}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshApp} tintColor={theme.colors.accentBlue} />}
       >
-        <PersonaSwitcher />
+        <PersonaSwitcher onManagePress={openProfileManager} />
 
         <View style={styles.header}>
           <View style={styles.userInfo}>
@@ -92,6 +93,7 @@ export default function HomeScreen({ navigation }) {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      <ProfileManagementModal />
     </SafeAreaView>
   );
 }
