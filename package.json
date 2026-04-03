@@ -17,6 +17,7 @@
     "@react-navigation/native": "^6.1.18",
     "@shopify/react-native-skia": "1.2.3",
     "@supabase/supabase-js": "^2.45.4",
+    "@types/react": "~18.2.79",
     "expo": "~51.0.28",
     "expo-blur": "~13.0.2",
     "expo-status-bar": "~1.12.1",
